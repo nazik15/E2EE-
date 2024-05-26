@@ -1,0 +1,47 @@
+import telebot
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives import hashes
+import base64
+
+# Вставте ваш токен сюди
+API_TOKEN = '6671116245:AAG26HWLlpYyLgrfH8EHggPZmoAUkJa0lqw'
+
+# Створення асиметричних ключів
+private_key = rsa.generate_private_key(
+    public_exponent=65537,
+    key_size=2048
+)
+
+public_key = private_key.public_key()
+
+# Ініціалізація бота
+bot = telebot.TeleBot(API_TOKEN)
+
+
+def encrypt_message(public_key, message):
+    encrypted = public_key.encrypt(
+        message.encode(),
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+        )
+    )
+    return base64.b64encode(encrypted).decode()
+
+
+@bot.message_handler(commands=['start', 'help'])
+def send_welcome(message):
+    bot.reply_to(message, "Hello! Send me a message and I'll encrypt it using an asymmetric key.")
+
+
+@bot.message_handler(func=lambda message: True)
+def echo_all(message):
+    encrypted_message = encrypt_message(public_key, message.text)
+    bot.reply_to(message, encrypted_message)
+
+
+if __name__ == '__main__':
+    bot.polling(none_stop=True)
